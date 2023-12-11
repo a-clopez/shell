@@ -105,6 +105,14 @@ int TrocearCadena(char *cadena, char *trozos[]) {
     return i;
 }
 
+bool isNum(const char *str) {
+    if (str == NULL || *str == '\0') return false;
+    while (*str >= '0' && *str <= '9') {
+        str++;
+    }
+    return *str == '\0';
+}
+
 void Cmd_pid(char *args[], int num_args) {
     if (num_args == 1) {
         pid_t shell_pid = getpid();
@@ -1147,6 +1155,47 @@ void Cmd_memdump(char *tr[], int num_args) {
         printf("\n");
     }
 }
+char * getUser(uid_t uid){
+    struct passwd *p;
+    if ((p= getpwuid(uid))==NULL) return "?????";
+    return p->pw_name;
+}
+
+uid_t getUid(char *user){
+    struct passwd *p;
+    if ((p= getpwnam(user))==NULL) return (uid_t) - 1;
+    return p->pw_uid;
+}
+
+void changeUid (char *login){
+    uid_t uid;
+    if ((uid= getUid(login))==(uid_t) - 1){
+        printf("Login not valid: %s\n", login);
+        return;
+    }else if (setuid(uid)==-1) printf("Impossible to change credential: %s\n", strerror(errno));
+}
+
+void PrintIDs(void){
+    uid_t real=getuid();
+    uid_t effect=geteuid();
+    printf("Real credential: %d, (%s)\n",real, getUser(real));
+    printf("Effective credential: %d, (%s)\n",effect, getUser(effect));
+}
+
+void Cmd_uid(char *tr[]){
+    if (tr[1]==NULL || tr[2]==NULL || !strcmp(tr[1],"-get")) PrintIDs();
+    else if (!strcmp(tr[1],"-set")){
+        if (!strcmp(tr[2],"-l")) {
+            changeUid(tr[3]);
+        }
+        else if (isNum(tr[2])){
+            char* user = getUser(atoi(tr[2]));
+            changeUid(user);
+        }else printf("Error: choose a valid option (-get|-set -l id)\n");
+    }else printf("Error: choose a valid option (-get|-set -l id)\n");
+}
+
+
 /* Help code:
 *el siguiente codigo se da como ayuda por si se quiere utilizar
 NO ES OBLIGATORIO USARLO
@@ -1497,12 +1546,12 @@ int main() {
             Cmd_memfill(tr, num_args);
             } else if (!strcmp(tr[0], "memdump")) {
             Cmd_memdump(tr, num_args);
-            } else if (!strcmp(tr[0], "write")) {
-            Cmd_write(tr, num_args);
             } else if (!strcmp(tr[0], "recurse")) {
             Cmd_recurse(tr);
             } else if (!strcmp(tr[0], "mem")) {
             Cmd_mem(tr, num_args);
+            } else if (!strcmp(tr[0], "uid")) {
+            Cmd_uid(tr);
         }
     }
     }
