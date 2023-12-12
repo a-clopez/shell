@@ -37,6 +37,7 @@
 #define login3 "a.clopez@udc.es"
 
 tList mem;
+char ** env;
 
 struct OpenFile {
     int descriptor;
@@ -1194,6 +1195,38 @@ void Cmd_uid(char *tr[]){
         }else printf("Error: choose a valid option (-get|-set -l id)\n");
     }else printf("Error: choose a valid option (-get|-set -l id)\n");
 }
+int searchVar (char * var, char *e[]){
+    int pos=0;
+    char aux[FILENAME_MAX];
+    strcpy (aux,var);
+    strcat (aux,"=");
+    while (e[pos]!=NULL)
+        if (!strncmp(e[pos],aux,strlen(aux)))
+             return (pos);
+        else
+            pos++;
+            errno=ENOENT;
+    return(-1);
+}
+void environment(char **e, char *e_name) {
+    for (int i = 0; e[i] != NULL; i++)
+        printf ("%p->%s[%d]=(%p) %s\n", &e[i], e_name, i, e[i], e[i]);
+}
+
+void showVariable ( char *var){
+    int pos;
+    char * getEnv = getenv(var);
+    if ((pos= searchVar(var,__environ))!=-1) {
+        printf("Con arg3 main %s(%p) @%p\n", __environ[pos], __environ[pos], &__environ[pos]);
+        printf("Con environ %s(%p) @%p\n", __environ[pos], __environ[pos], &__environ[pos]);
+        printf("Con getenv %s(%p)\n", getEnv, &getEnv);
+    }
+}
+
+void Cmd_showvar(char *tr[]){
+    if(tr[1]==NULL) environment(__environ, "main arg3");
+    else showVariable(tr[1]);
+}
 
 
 /* Help code:
@@ -1476,6 +1509,7 @@ int main() {
     int history_count = 0;
     createEmptyList(&mem);
 
+
     while (1) {
         print_prompt();
         char input[1048];
@@ -1552,6 +1586,8 @@ int main() {
             Cmd_mem(tr, num_args);
             } else if (!strcmp(tr[0], "uid")) {
             Cmd_uid(tr);
+            } else if (!strcmp(tr[0], "showvar")) {
+                Cmd_showvar(tr);
         }
     }
     }
