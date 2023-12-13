@@ -1228,6 +1228,53 @@ void Cmd_showvar(char *tr[]){
     else showVariable(tr[1]);
 }
 
+void Cmd_fork (char *tr[])
+{
+    pid_t pid;
+
+    if ((pid=fork())==0){
+		VaciarListaProcesos(&LP); Depende de la implementación de cada uno
+        printf ("ejecutando proceso %d\n", getpid());
+    }
+    else if (pid!=-1)
+        waitpid (pid,NULL,0);
+}
+
+void Cmd_execute (char *tr[], int num_args){
+	pid_t pid = fork();
+	
+	if (pid==0){
+	execvp(tr[0],tr);
+	perror("Error");
+	exit(EXIT_FAILURE);
+	}else if (pid < 0){
+	wait(NULL);
+	}else{
+	perror("Error");
+	exit(EXIT_FAILURE);
+	}
+}
+
+void showenv(char *tr[], int num_args) {
+
+
+    if (num_args == 2) {
+        if (strcmp(tr[1], "-environ") == 0) {
+            enviroment(__environ,"environ");
+            }
+        } else if (strcmp(tr[1], "-addr") == 0) {
+            printf("Address of environ: %p\n", (void *)env);
+            printf("Address of main arg3: %p\n", (void *)tr);
+        } else {
+            printf("Invalid option. Use -environ or -addr.\n");
+        }
+    } else {
+    	enviroment(__environ,"main arg3");
+        /*printf("Usage: showenv [-environ|-addr]\n");
+        printf("-environ: Accesses the environment using environ.\n");
+        printf("-addr: Shows the value and location of environ and the 3rd argument of main.\n");*/
+    }
+}
 
 /* Help code:
 *el siguiente codigo se da como ayuda por si se quiere utilizar
