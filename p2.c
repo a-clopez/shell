@@ -1213,19 +1213,19 @@ void environment(char **e, char *e_name) {
         printf ("%p->%s[%d]=(%p) %s\n", &e[i], e_name, i, e[i], e[i]);
 }
 
-void showVariable ( char *var){
+void showVariable (char *var,char *envir[]){
     int pos;
     char * getEnv = getenv(var);
     if ((pos= searchVar(var,__environ))!=-1) {
-        printf("Con arg3 main %s(%p) @%p\n", __environ[pos], __environ[pos], &__environ[pos]);
+        printf("Con arg3 main %s(%p) @%p\n", envir[pos], envir[pos], &envir[pos]);
         printf("Con environ %s(%p) @%p\n", __environ[pos], __environ[pos], &__environ[pos]);
         printf("Con getenv %s(%p)\n", getEnv, &getEnv);
     }
 }
 
-void Cmd_showvar(char *tr[]){
+void Cmd_showvar(char *tr[], int num_args,char *envir[]){
     if(tr[1]==NULL) environment(__environ, "main arg3");
-    else showVariable(tr[1]);
+    else showVariable(tr[1],envir);
 }
 
 void Cmd_changevar(char *tr[]){
@@ -1266,7 +1266,7 @@ void Cmd_showenv(char *tr[], int num_args,char *envir[]) {
             environment(__environ,"environ");
         } else if (strcmp(tr[1], "-addr") == 0) {
             printf("Address of environ: %p (Stored in %p)\n", &__environ[0],&__environ);
-            printf("Address of main arg3: %p (Stored in %p)\n", envir,&envir)
+            printf("Address of main arg3: %p (Stored in %p)\n", envir,&envir);
         } else {
             printf("Invalid option. Use -environ or -addr.\n");
         }
@@ -1636,7 +1636,7 @@ int main(int argc, char * argv[],char *envir[]) {
             } else if (!strcmp(tr[0], "uid")) {
             Cmd_uid(tr);
             } else if (!strcmp(tr[0], "showvar")) {
-                Cmd_showvar(tr);
+                Cmd_showvar(tr,num_args,envir);
             } else if (!strcmp(tr[0], "showenv")) {
             Cmd_showenv(tr,num_args,envir);
         }
