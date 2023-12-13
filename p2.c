@@ -1228,6 +1228,10 @@ void Cmd_showvar(char *tr[]){
     else showVariable(tr[1]);
 }
 
+void Cmd_changevar(char *tr[]){
+    
+}
+
 void Cmd_fork (char *tr[])
 {
     pid_t pid;
@@ -1257,14 +1261,12 @@ void Cmd_execute (char *tr[], int num_args){
 
 void Cmd_showenv(char *tr[], int num_args,char *envir[]) {
 
-
     if (num_args == 2) {
         if (strcmp(tr[1], "-environ") == 0) {
             environment(__environ,"environ");
-            
         } else if (strcmp(tr[1], "-addr") == 0) {
             printf("Address of environ: %p (Stored in %p)\n", &__environ[0],&__environ);
-            printf("Address of main arg3: %p (Stored in %p)\n", envir,&envir);
+            printf("Address of main arg3: %p (Stored in %p)\n", envir,&envir)
         } else {
             printf("Invalid option. Use -environ or -addr.\n");
         }
