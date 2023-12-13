@@ -1274,17 +1274,19 @@ void Cmd_fork (char *tr[],struct context *ctx)
 }
 
 void Cmd_execute (char *tr[], int num_args){
-	pid_t pid = fork();
 	
+	char *args[100];
+	int i;
+	for (i=0;tr[i+1]!=NULL;i++){
+		args[i]=strdup(tr[i+1]);}
+	for(int j = i;j<100;j++){
+	args[j]=NULL;;}
+	pid_t pid=fork();
 	if (pid==0){
-	execvp(tr[0],tr);
-	perror("Error");
-	exit(EXIT_FAILURE);
-	}else if (pid < 0){
-	wait(NULL);
-	}else{
-	perror("Error");
-	exit(EXIT_FAILURE);
+	if (execvp(args[0],args) == -1){
+	perror("Execvp");
+	exit(EXIT_EXECVP_FAILURE);
+	}
 	}
 }
 
@@ -1397,14 +1399,14 @@ void executeCommand(char *tr[], int num_args, struct context *ctx) {
         background = 1;
         num_args--;
     }
-
+	
     pid_t pid = fork();
-
+	
     if (pid == -1) {
         perror("fork");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
-        execvp(tr[0], tr);
+         execvp(tr[0], tr); 
         perror("execvp");
         exit(EXIT_EXECVP_FAILURE);
     } else {
@@ -1651,6 +1653,9 @@ int main(int argc, char * argv[],char *envir[]) {
             	Cmd_showenv(tr,num_args,envir);
             } else if (!strcmp(tr[0], "fork")) {
             	Cmd_fork(tr,&ctx);
+       
+            } else if (!strcmp(tr[0], "exec")) {
+            	Cmd_execute(tr, num_args);
             } else if (!strcmp(tr[0], "changevar")) {
                 Cmd_changevar(tr,num_args,envir);
             } else if (!strcmp(tr[0], "jobs")) {
