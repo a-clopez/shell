@@ -1228,12 +1228,16 @@ void Cmd_showvar(char *tr[]){
     else showVariable(tr[1]);
 }
 
+void Cmd_changevar(char *tr[]){
+    
+}
+
 void Cmd_fork (char *tr[])
 {
     pid_t pid;
 
     if ((pid=fork())==0){
-		VaciarListaProcesos(&LP); Depende de la implementación de cada uno
+		//VaciarListaProcesos(&LP); Depende de la implementación de cada uno
         printf ("ejecutando proceso %d\n", getpid());
     }
     else if (pid!=-1)
@@ -1255,21 +1259,19 @@ void Cmd_execute (char *tr[], int num_args){
 	}
 }
 
-void showenv(char *tr[], int num_args) {
-
-
+void Cmd_showenv(char *tr[], int num_args) {
     if (num_args == 2) {
         if (strcmp(tr[1], "-environ") == 0) {
-            enviroment(__environ,"environ");
-            }
+            environment(__environ,"environ");
+
         } else if (strcmp(tr[1], "-addr") == 0) {
-            printf("Address of environ: %p\n", (void *)env);
-            printf("Address of main arg3: %p\n", (void *)tr);
+            printf("environ: %p (stored in %p)\n",&__environ[0], &__environ);
+            printf("main arg3: %p (stored in %p)\n",&__environ[0], &env);
         } else {
             printf("Invalid option. Use -environ or -addr.\n");
         }
     } else {
-    	enviroment(__environ,"main arg3");
+    	environment(__environ,"main arg3");
         /*printf("Usage: showenv [-environ|-addr]\n");
         printf("-environ: Accesses the environment using environ.\n");
         printf("-addr: Shows the value and location of environ and the 3rd argument of main.\n");*/
@@ -1635,7 +1637,9 @@ int main() {
             Cmd_uid(tr);
             } else if (!strcmp(tr[0], "showvar")) {
                 Cmd_showvar(tr);
-        }
+            } else if (!strcmp(tr[0], "showenv")) {
+                Cmd_showenv(tr, num_args);
+            }
     }
     }
         for (int i = 0; i < history_count; i++) {
