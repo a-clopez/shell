@@ -16,17 +16,18 @@
 #include <grp.h>  
 #include <dirent.h>
 #include "dynamic_list.c"
+#include "jobs.c"
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include <sys/wait.h>
-
+#include <signal.h>
 
 #define MAX_HISTORY_SIZE 100
 #define MAX_OPEN_FILES 10
 #define MAX_FILENAME_LENGTH 256
 #define TAMANO 2048
-#define MAX_LINE 1024
+
 
 
 #define name1 "Calin Lupascu"
@@ -1204,9 +1205,9 @@ int searchVar (char * var, char *e[]){
     while (e[pos]!=NULL)
         if (!strncmp(e[pos],aux,strlen(aux)))
              return (pos);
-        else
+        else{
             pos++;
-            errno=ENOENT;
+            errno=ENOENT;}
     return(-1);
 }
 int changeVar(char * var, char * valor, char *e[]){
@@ -1240,7 +1241,7 @@ void showVariable (char *var,char *envir[]){
 
 void Cmd_showvar(char *tr[], int num_args,char *envir[]){
     if(tr[1]==NULL) environment(__environ, "main arg3");
-    else showVariable(tr[1],envir);
+    else {showVariable(tr[1],envir);}
 }
 
 void Cmd_changevar(char *tr[], int num_args, char *envir[]){
@@ -1260,12 +1261,12 @@ void Cmd_changevar(char *tr[], int num_args, char *envir[]){
     free(aux);
 }
 
-void Cmd_fork (char *tr[])
+void Cmd_fork (char *tr[],struct context *ctx)
 {
     pid_t pid;
 
     if ((pid=fork())==0){
-		//VaciarListaProcesos(&LP); Depende de la implementación de cada uno
+		freeList(&ctx->jobs); 
         printf ("ejecutando proceso %d\n", getpid());
     }
     else if (pid!=-1)
@@ -1306,158 +1307,129 @@ void Cmd_showenv(char *tr[], int num_args,char *envir[]) {
     }
 }
 
-/* Help code:
-*el siguiente codigo se da como ayuda por si se quiere utilizar
-NO ES OBLIGATORIO USARLO
-y pueden usarse funciones enteras o parte de funciones
+void Cmd_jobs(struct context *ctx) {
+    updateJobStatus(&ctx->jobs);
+    listJobs(&ctx->jobs);
+}
 
-Este fichero, ayudaP3.c no está pensado para ser compilado separadamente
-, entre otras cosas, no contiene los includes necesarios
-y las constantes utilizadas, no están definidas en él
 
-void Cmd_fork (char *tr[])
-{
-    pid_t pid;
-
-    if ((pid=fork())==0){
-		VaciarListaProcesos(&LP); Depende de la implementación de cada uno
-        printf ("ejecutando proceso %d\n", getpid());
+void Cmd_job(char *tr[], int num_args, struct context *ctx) {
+    if (num_args < 2 || num_args > 3) {
+        printf("Error: Invalid number of arguments for 'job' command\n");
+        return;
     }
-    else if (pid!=-1)
-        waitpid (pid,NULL,0);
-}
 
-int BuscarVariable (char * var, char *e[])  /busca una variable en el entorno que se le pasa como parámetro
-{
-    int pos=0;
-    char aux[MAXVAR];
-
-    strcpy (aux,var);
-    strcat (aux,"=");
-
-    while (e[pos]!=NULL)
-        if (!strncmp(e[pos],aux,strlen(aux)))
-            return (pos);
-        else
-            pos++;
-    errno=ENOENT;   /*no hay tal variable
-    return(-1);
-}
-
-
-int CambiarVariable(char * var, char * valor, char *e[]) /cambia una variable en el entorno que se le pasa como parámetro
-{                                                        /lo hace directamente, no usa putenv
-    int pos;
-    char *aux;
-
-    if ((pos=BuscarVariable(var,e))==-1)
-        return(-1);
-
-    if ((aux=(char *)malloc(strlen(var)+strlen(valor)+2))==NULL)
-        return -1;
-    strcpy(aux,var);
-    strcat(aux,"=");
-    strcat(aux,valor);
-    e[pos]=aux;
-    return (pos);
+    if (strcmp(tr[1], "-fg") == 0) {
+        if (num_args == 3) {
+            pid_t pid = atoi(tr[2]);
+            updateJobStatus(&ctx->jobs);
+            struct Node *current = ctx->jobs.head;
+            while (current != NULL) {
+                if (current->data->pid == pid) {
+                    waitpid(pid, NULL, 0);
+                    printf("Process %d terminated normally. Return value %d\n", pid, current->data->out);
+                    removeJob(&ctx->jobs, pid);
+                    return;
+                }
+                current = current->next;
+            }
+            printf("Error: Process with PID %d not found\n", pid);
+        } else {
+            printf("Error: Invalid number of arguments for '-fg' option\n");
+        }
+    } else {
+        pid_t pid = atoi(tr[1]);
+        updateJobStatus(&ctx->jobs);
+        struct Node *current = ctx->jobs.head;
+        while (current != NULL) {
+            if (current->data->pid == pid) {
+                listJobDetails(&ctx->jobs, pid);
+                return;
+            }
+            current = current->next;
+        }
+    }
 }
 
 
-/las siguientes funciones nos permiten obtener el nombre de una senal a partir
-del número y viceversa
-static struct SEN sigstrnum[]={
-        {"HUP", SIGHUP},
-        {"INT", SIGINT},
-        {"QUIT", SIGQUIT},
-        {"ILL", SIGILL},
-        {"TRAP", SIGTRAP},
-        {"ABRT", SIGABRT},
-        {"IOT", SIGIOT},
-        {"BUS", SIGBUS},
-        {"FPE", SIGFPE},
-        {"KILL", SIGKILL},
-        {"USR1", SIGUSR1},
-        {"SEGV", SIGSEGV},
-        {"USR2", SIGUSR2},
-        {"PIPE", SIGPIPE},
-        {"ALRM", SIGALRM},
-        {"TERM", SIGTERM},
-        {"CHLD", SIGCHLD},
-        {"CONT", SIGCONT},
-        {"STOP", SIGSTOP},
-        {"TSTP", SIGTSTP},
-        {"TTIN", SIGTTIN},
-        {"TTOU", SIGTTOU},
-        {"URG", SIGURG},
-        {"XCPU", SIGXCPU},
-        {"XFSZ", SIGXFSZ},
-        {"VTALRM", SIGVTALRM},
-        {"PROF", SIGPROF},
-        {"WINCH", SIGWINCH},
-        {"IO", SIGIO},
-        {"SYS", SIGSYS},
-/senales que no hay en todas partes
-#ifdef SIGPOLL
-        {"POLL", SIGPOLL},
-#endif
-#ifdef SIGPWR
-        {"PWR", SIGPWR},
-#endif
-#ifdef SIGEMT
-        {"EMT", SIGEMT},
-#endif
-#ifdef SIGINFO
-        {"INFO", SIGINFO},
-#endif
-#ifdef SIGSTKFLT
-        {"STKFLT", SIGSTKFLT},
-#endif
-#ifdef SIGCLD
-        {"CLD", SIGCLD},
-#endif
-#ifdef SIGLOST
-        {"LOST", SIGLOST},
-#endif
-#ifdef SIGCANCEL
-        {"CANCEL", SIGCANCEL},
-#endif
-#ifdef SIGTHAW
-        {"THAW", SIGTHAW},
-#endif
-#ifdef SIGFREEZE
-        {"FREEZE", SIGFREEZE},
-#endif
-#ifdef SIGLWP
-        {"LWP", SIGLWP},
-#endif
-#ifdef SIGWAITING
-        {"WAITING", SIGWAITING},
-#endif
-        {NULL,-1},
-};    /fin array sigstrnum
+void removeJobByOptions(struct LinkedList *list, char *tr[]) {
+    struct Node *current = list->head;
+    struct Node *next;
 
+    while (current != NULL) {
+        next = current->next;
 
-int ValorSenal(char * sen)  /devuelve el numero de senial a partir del nombre
-{
-    int i;
-    for (i=0; sigstrnum[i].nombre!=NULL; i++)
-        if (!strcmp(sen, sigstrnum[i].nombre))
-            return sigstrnum[i].senal;
-    return -1;
+        if (strcmp(tr[1], "-term") == 0) {
+            if (strcmp(current->data->state, "TERMINADO") == 0) {
+                removeJob(list, current->data->pid);
+            }
+        } else if (strcmp(tr[1], "-sig") == 0) {
+            if (strcmp(current->data->state, "SENALADO") == 0) {
+                removeJob(list, current->data->pid);
+            }
+        }
+        current = next;
+    }
+}
+
+void Cmd_deljobs(char *tr[], int num_args, struct context *ctx) {
+    if (num_args == 0) {
+        printf("Error: Not enough arguments for 'deljobs' command\n");
+        return;
+    }
+
+    if ((!strcmp(tr[1], "-term"))|| (!strcmp(tr[1], "-sig"))) {
+        updateJobStatus(&ctx->jobs);
+        removeJobByOptions(&ctx->jobs, tr);
+        listJobs(&ctx->jobs);
+    } else {
+        printf("Error: Invalid argument for 'deljobs' command\n");
+    }
 }
 
 
-char *NombreSenal(int sen)  /devuelve el nombre senal a partir de la senal
-{			/ para sitios donde no hay sig2str
-    int i;
-    for (i=0; sigstrnum[i].nombre!=NULL; i++)
-        if (sen==sigstrnum[i].senal)
-            return sigstrnum[i].nombre;
-    return ("SIGUNKNOWN");
+
+void executeCommand(char *tr[], int num_args, struct context *ctx) {
+    int background = 0;
+
+    if (num_args > 0 && strcmp(tr[num_args - 1], "&") == 0) {
+        tr[num_args - 1] = NULL;
+        background = 1;
+        num_args--;
+    }
+
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        execvp(tr[0], tr);
+        perror("execvp");
+        exit(EXIT_EXECVP_FAILURE);
+    } else {
+        if (!background) {
+            waitpid(pid, NULL, 0);
+        } else {
+            uid_t uid = getuid();
+            struct passwd *pw = getpwuid(uid);
+            const char *username = (pw != NULL) ? pw->pw_name : "UnknownUser";
+
+            char command[256]; 
+            command[0] = '\0';
+
+            for (int i = 0; i < num_args; i++) {
+                strcat(command, tr[i]);
+                if (i < num_args - 1) {
+                    strcat(command, " ");
+                }
+            }
+
+            insertJob(&ctx->jobs, pid, uid, username, command, "");
+            printf("Background process with PID: %d\n", pid);
+        }
+    }
 }
-*/
-
-
 
 
 void Cmd_help(char *args[], int num_args) {
@@ -1566,6 +1538,14 @@ void Cmd_help(char *args[], int num_args) {
             printf("memdump addr cont \tDumps in screen the contents (cont bytes) of the position of memory addr");
         }else if (!strcmp(args[1], "read")) {
             printf("read file addr cont \tLee cont bytes desde fich a la direccion addr");
+        }else if (!strcmp(args[1], "jobs")) {
+            printf("jobs\tLista los procesos en segundo plano\n");
+        }
+        else if (!strcmp(args[1], "job")) {
+            printf("job [-fg] pid\n\tMuestra informacion del proceso pid.\n\t-fg: lo pasa a primer plano\n");
+        }
+        else if (!strcmp(args[1], "deljobs")) {
+            printf("deljobs [-term][-sig]\tElimina los procesos de la lista procesos en sp\n\t-term: los terminados\n\t-sig: los terminados por senal\n");
         }
         else {
             printf("Invalid command: %s\n", args[1]);
@@ -1586,6 +1566,8 @@ int main(int argc, char * argv[],char *envir[]) {
     int history_count = 0;
     createEmptyList(&mem);
 
+    struct context ctx;
+    ctx.jobs.head = NULL;
 
     while (1) {
         print_prompt();
@@ -1666,17 +1648,26 @@ int main(int argc, char * argv[],char *envir[]) {
             } else if (!strcmp(tr[0], "showvar")) {
                 Cmd_showvar(tr,num_args,envir);
             } else if (!strcmp(tr[0], "showenv")) {
-            Cmd_showenv(tr,num_args,envir);
+            	Cmd_showenv(tr,num_args,envir);
+            } else if (!strcmp(tr[0], "fork")) {
+            	Cmd_fork(tr,&ctx);
             } else if (!strcmp(tr[0], "changevar")) {
                 Cmd_changevar(tr,num_args,envir);
-        }
+            } else if (!strcmp(tr[0], "jobs")) {
+            	Cmd_jobs(&ctx);
+            } else if (!strcmp(tr[0], "job")) {
+            	Cmd_job(tr, num_args, &ctx);
+            } else if (!strcmp(tr[0], "deljobs")) {
+            	Cmd_deljobs(tr, num_args, &ctx);
+    	    } else {
+                executeCommand(tr, num_args, &ctx);
+            }
     }
     }
         for (int i = 0; i < history_count; i++) {
             free(history[i]);
     }
     free (mem);
-
-
+    freeList(&ctx.jobs);
     return 0;
 }
