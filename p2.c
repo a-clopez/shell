@@ -26,6 +26,7 @@
 #define MAX_OPEN_FILES 10
 #define MAX_FILENAME_LENGTH 256
 #define TAMANO 2048
+#define MAX_LINE 1024
 
 
 #define name1 "Calin Lupascu"
@@ -1208,6 +1209,20 @@ int searchVar (char * var, char *e[]){
             errno=ENOENT;
     return(-1);
 }
+int changeVar(char * var, char * valor, char *e[]){
+    int pos;
+    char *aux;
+    if ((pos=searchVar(var,e))==-1)
+        return(-1);
+    if ((aux=(char *)malloc(strlen(var)+strlen(valor)+2))==NULL)
+        return -1;
+    strcpy(aux,var);
+    strcat(aux,"=");
+    strcat(aux,valor);
+    e[pos]=aux;
+    return (pos);
+}
+
 void environment(char **e, char *e_name) {
     for (int i = 0; e[i] != NULL; i++)
         printf ("%p->%s[%d]=(%p) %s\n", &e[i], e_name, i, e[i], e[i]);
@@ -1228,8 +1243,21 @@ void Cmd_showvar(char *tr[], int num_args,char *envir[]){
     else showVariable(tr[1],envir);
 }
 
-void Cmd_changevar(char *tr[]){
-    
+void Cmd_changevar(char *tr[], int num_args, char *envir[]){
+    char *aux=malloc(MAX_LINE);
+    if (tr[1]!=NULL) {
+        if (num_args == 3) {
+            if (!strcmp(tr[1], "-a")) changeVar(tr[2], tr[3], envir);
+            else if (!strcmp(tr[1], "-e")) changeVar(tr[2], tr[3], __environ);
+            else if (!strcmp(tr[0], "-p")) {
+                strcpy(aux,tr[2]);
+                strcat(aux,"=");
+                strcat(aux,tr[3]);
+                putenv(aux);
+            }
+        }
+    }
+    free(aux);
 }
 
 void Cmd_fork (char *tr[])
@@ -1639,6 +1667,8 @@ int main(int argc, char * argv[],char *envir[]) {
                 Cmd_showvar(tr,num_args,envir);
             } else if (!strcmp(tr[0], "showenv")) {
             Cmd_showenv(tr,num_args,envir);
+            } else if (!strcmp(tr[0], "changevar")) {
+                Cmd_changevar(tr,num_args,envir);
         }
     }
     }
