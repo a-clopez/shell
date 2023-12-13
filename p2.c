@@ -1271,24 +1271,22 @@ void Cmd_fork (char *tr[],struct context *ctx)
     }
     else if (pid!=-1)
         waitpid (pid,NULL,0);
-}
+	}
 
 void Cmd_execute (char *tr[], int num_args){
 	
 	char *args[100];
-	int i;
+	int i;	
 	for (i=0;tr[i+1]!=NULL;i++){
 		args[i]=strdup(tr[i+1]);}
 	for(int j = i;j<100;j++){
 	args[j]=NULL;;}
-	pid_t pid=fork();
-	if (pid==0){
 	if (execvp(args[0],args) == -1){
 	perror("Execvp");
 	exit(EXIT_EXECVP_FAILURE);
 	}
-	}
 }
+
 
 void Cmd_showenv(char *tr[], int num_args,char *envir[]) {
 
