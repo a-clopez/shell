@@ -27,6 +27,7 @@
 #define MAX_OPEN_FILES 10
 #define MAX_FILENAME_LENGTH 256
 #define TAMANO 2048
+#define MAX_LINES 1024
 
 
 
@@ -1245,20 +1246,41 @@ void Cmd_showvar(char *tr[], int num_args,char *envir[]){
 }
 
 void Cmd_changevar(char *tr[], int num_args, char *envir[]){
-    char *aux=malloc(MAX_LINE);
+    char aux[MAX_LINES];
     if (tr[1]!=NULL) {
-        if (num_args == 3) {
+        if (num_args == 4) {
             if (!strcmp(tr[1], "-a")) changeVar(tr[2], tr[3], envir);
             else if (!strcmp(tr[1], "-e")) changeVar(tr[2], tr[3], __environ);
-            else if (!strcmp(tr[0], "-p")) {
-                strcpy(aux,tr[2]);
-                strcat(aux,"=");
-                strcat(aux,tr[3]);
+            else if (!strcmp(tr[1], "-p")) {
+                sprintf(aux, "%s=%s", tr[2], tr[3]);
                 putenv(aux);
             }
         }
     }
-    free(aux);
+}
+
+void Cmd_subsvar(char *tr[], int num_args, char *envir[]){
+    int pos;
+    char *aux;
+    if ((aux=malloc(strlen(tr[2])+strlen(tr[4])+2))==NULL)
+        return;
+    if(!strcmp(tr[1],"-a")){
+        if ((pos=searchVar(tr[2],envir))==-1)
+            return;
+        strcpy(aux, tr[3]);
+        strcat(aux, "=");
+        strcat(aux, tr[4]);
+        envir[pos]=aux;
+    }
+    else if (!strcmp(tr[1],"-e")){
+        if ((pos=searchVar(tr[2],__environ))==-1)
+            return;
+        strcpy(aux, tr[3]);
+        strcat(aux, "=");
+        strcat(aux, tr[4]);
+        __environ[pos]=aux;
+    }
+    else printf("Use: subsvar [-a|-e] var value");
 }
 
 void Cmd_fork (char *tr[],struct context *ctx)
@@ -1547,6 +1569,9 @@ void Cmd_help(char *args[], int num_args) {
         else if (!strcmp(args[1], "deljobs")) {
             printf("deljobs [-term][-sig]\tElimina los procesos de la lista procesos en sp\n\t-term: los terminados\n\t-sig: los terminados por senal\n");
         }
+        else if (!strcmp(args[1], "subsvar")) {
+            printf("deljobs [-term][-sig]\tElimina los procesos de la lista procesos en sp\n\t-term: los terminados\n\t-sig: los terminados por senal\n");
+        }
         else {
             printf("Invalid command: %s\n", args[1]);
         }
@@ -1662,7 +1687,10 @@ int main(int argc, char * argv[],char *envir[]) {
             	Cmd_job(tr, num_args, &ctx);
             } else if (!strcmp(tr[0], "deljobs")) {
             	Cmd_deljobs(tr, num_args, &ctx);
-    	    } else {
+    	    }else if (!strcmp(tr[0], "subsvar")) {
+                Cmd_subsvar(tr, num_args, envir);
+            }
+            else {
                 executeCommand(tr, num_args, &ctx);
             }
     }
