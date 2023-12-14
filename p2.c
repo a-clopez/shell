@@ -677,12 +677,12 @@ void Cmd_deltree(char *tr[], int num_args) {
 void readList(struct tNode node, char tr[], char size[]){
     char Size[MAX_FILENAME_LENGTH];
     struct tm tm = *localtime(&node.mem.date);
-    sprintf(Size, "%d", node.mem.size);
+    sprintf(Size, "%ld", node.mem.size);
     char funcNode[]={};
     strcpy(funcNode, node.data.text);
     strtok(funcNode, " ");
     if ((!strcmp(funcNode, tr) || !strcmp("all", tr)) && ((!strcmp(size, Size)) || !strcmp("all", size))) {
-        printf("%p: size:%d B ", node.mem.address, node.mem.size);
+        printf("%p: size:%ld B ", node.mem.address, node.mem.size);
         if (strlen(node.mem.data.text) > 0)
             printf("%s (fd:%d) ", node.mem.data.text, node.mem.key);
         else if (node.mem.key >= 0)
@@ -829,7 +829,6 @@ void Cmd_malloc(char *tr[]){
     time_t date;
     size_t tam;
     date=time(NULL);
-    struct tm tm= *localtime(&date);
     if (tr[1]==NULL){
         printf("******List of allocated malloc blocks for the process %d\n",getpid());
         printMalloc();
