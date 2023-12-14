@@ -8,5 +8,5 @@ include_directories(.)
 add_executable(P2
         dynamic_list.c
         dynamic_list.h
-        p2.c
+        p3.c
         types.h)
